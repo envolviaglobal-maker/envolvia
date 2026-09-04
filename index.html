@@ -189,13 +189,9 @@
   </div>
 
   <script>
-    // ==========================================================
-    // TODO: reemplazar con el proyecto Supabase propio de Envolvia
-    // (creado con la cuenta envolvia.global@gmail.com) en cuanto exista.
-    // Hasta entonces esta pantalla se queda en el login sin conectar.
-    // ==========================================================
-    const SB_URL = 'PENDIENTE_URL_SUPABASE_ENVOLVIA';
-    const SB_KEY = 'PENDIENTE_ANON_KEY_SUPABASE_ENVOLVIA';
+    // Proyecto Supabase propio de Envolvia (cuenta envolvia.global@gmail.com).
+    const SB_URL = 'https://flywshanncofwfsurkme.supabase.co';
+    const SB_KEY = 'sb_publishable_sG4XtMJvQLbMM8skUTLixw_FYosikYl';
     const CORREO_PERMITIDO = 'mauriciando1999@gmail.com';
 
     const _sb = SB_URL.startsWith('http') ? supabase.createClient(SB_URL, SB_KEY) : null;

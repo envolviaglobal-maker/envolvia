@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Envolvia · Panel</title>
+<meta name="theme-color" content="#FDF6EC">
+<link rel="icon" href="data:,">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          cream: '#FDF6EC',
+          ink: '#141414',
+          yellow: '#FFC93C',
+          green: '#8BD17A',
+          pink: '#FF8FAE',
+          lav: '#B7A6F5',
+          sky: '#7FD1E0',
+        },
+        fontFamily: {
+          hud: ['Cascadia Code', 'Consolas', 'ui-monospace', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Bangers&family=Press+Start+2P&display=swap');
+  html, body { font-family: 'Inter', sans-serif; background: #FDF6EC; color: #141414; overflow-x: hidden; }
+
+  .font-comic { font-family: 'Bangers', cursive; letter-spacing: 0.04em; }
+  .font-pixel { font-family: 'Press Start 2P', monospace; }
+  .pixelated { image-rendering: pixelated; image-rendering: -moz-crisp-edges; image-rendering: crisp-edges; }
+
+  /* Textura de puntos halftone, estilo impresión de cómic — sutil, detrás
+     del header/login, nunca detrás de texto para no perder legibilidad. */
+  .halftone {
+    background-image: radial-gradient(#141414 1.15px, transparent 1.15px);
+    background-size: 9px 9px;
+    opacity: 0.06;
+  }
+
+  /* Bloque base neubrutalista/cómic: borde negro grueso + sombra dura sin blur. */
+  .brut {
+    background: #fff;
+    border: 2.5px solid #141414;
+    border-radius: 1.1rem;
+    box-shadow: 5px 5px 0 #141414;
+  }
+  .brut-sm { border-radius: 0.7rem; box-shadow: 3px 3px 0 #141414; }
+  .brut-btn {
+    border: 2.5px solid #141414;
+    border-radius: 0.7rem;
+    box-shadow: 3px 3px 0 #141414;
+    font-weight: 800;
+    transition: transform 100ms ease, box-shadow 100ms ease;
+  }
+  .brut-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #141414; }
+  .field {
+    width: 100%;
+    background: #fff;
+    border: 2.5px solid #141414;
+    border-radius: 0.7rem;
+    padding: 0.8rem 1rem;
+    font-size: 13px;
+    font-weight: 600;
+    color: #141414;
+  }
+  .field::placeholder { color: #8a8a8a; font-weight: 500; }
+  .field:focus { outline: none; box-shadow: 3px 3px 0 #141414; }
+  .badge {
+    width: 2.75rem; height: 2.75rem; border-radius: 0.6rem;
+    border: 2.5px solid #141414; display: flex; align-items: center; justify-content: center;
+    box-shadow: 3px 3px 0 #141414; overflow: hidden;
+  }
+  .tab-btn { background: #fff; }
+  .tab-btn.active { background: #FFC93C; }
+  .scroll-thin::-webkit-scrollbar { width: 6px; }
+  .scroll-thin::-webkit-scrollbar-thumb { background: #141414; border-radius: 999px; }
+
+  /* Globo de dialogo estilo comic: colita triangular apuntando al avatar. */
+  .globo-izq::before, .globo-der::before {
+    content: ''; position: absolute; top: 12px; width: 0; height: 0;
+    border-top: 7px solid transparent; border-bottom: 7px solid transparent;
+  }
+  .globo-izq { position: relative; }
+  .globo-izq::before { left: -8px; border-right: 8px solid #141414; }
+  .globo-izq::after {
+    content: ''; position: absolute; top: 12px; left: -5.5px; width: 0; height: 0;
+    border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-right: 7px solid #fff;
+  }
+  .globo-der { position: relative; }
+  .globo-der::before { right: -8px; border-left: 8px solid #141414; }
+  .globo-der::after {
+    content: ''; position: absolute; top: 12px; right: -5.5px; width: 0; height: 0;
+    border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-left: 7px solid #FFC93C;
+  }
+  /* Pestaña tipo carpeta asomando arriba de la tarjeta. */
+  .folder-tab { position: absolute; top: -10px; left: 14px; width: 34px; height: 14px; border-radius: 6px 6px 0 0; border: 2.5px solid #141414; border-bottom: none; }
+</style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- LOGIN -->
+  <div id="auth-screen" class="min-h-screen flex items-center justify-center p-4">
+    <form id="form-login" class="w-full max-w-sm p-8 brut relative overflow-hidden">
+      <div class="absolute inset-0 halftone pointer-events-none"></div>
+      <div class="relative text-center mb-6">
+        <div class="w-20 h-20 rounded-2xl mx-auto mb-3 border-[2.5px] border-ink overflow-hidden bg-sky" style="box-shadow: 4px 4px 0 #141414;">
+          <img src="assets/avatar-wave.png" alt="Sara" class="w-full h-full object-cover pixelated">
+        </div>
+        <h1 class="text-3xl font-comic">ENVOLVIA</h1>
+        <p class="text-[11px] uppercase tracking-[0.15em] text-black/50 font-bold mt-1">Panel · Acceso restringido</p>
+      </div>
+      <div class="relative space-y-3">
+        <input type="email" id="login-email" placeholder="Correo" required class="field">
+        <input type="password" id="login-pass" placeholder="Contraseña" required class="field">
+      </div>
+      <button type="submit" class="relative w-full mt-5 brut-btn bg-yellow py-3 text-sm">INGRESAR</button>
+      <p id="login-error" class="relative hidden text-red-600 text-[11px] font-bold text-center mt-4"></p>
+    </form>
+  </div>
+
+  <!-- DENEGADO -->
+  <div id="denegado-screen" class="hidden min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-sm p-8 brut text-center">
+      <i class="fa-solid fa-lock text-2xl mb-3"></i>
+      <h1 class="text-sm font-black mb-1">Acceso restringido</h1>
+      <p class="text-[11px] text-black/60 mb-5">Esta cuenta no tiene permiso para entrar acá.</p>
+      <button onclick="cerrarSesion()" class="brut-btn bg-white px-5 py-2.5 text-xs mx-auto block">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <!-- CONTENIDO -->
+  <div id="app-content" class="hidden min-h-screen flex flex-col">
+    <header class="flex items-center justify-between gap-4 px-5 py-4 shrink-0 border-b-[2.5px] border-ink bg-cream">
+      <div class="flex items-center gap-3">
+        <div class="badge bg-sky">
+          <img src="assets/avatar-wave.png" alt="Sara" class="w-full h-full object-cover pixelated">
+        </div>
+        <div>
+          <h1 class="text-lg font-comic leading-none">ENVOLVIA</h1>
+          <p class="text-[10px] uppercase tracking-[0.15em] text-black/50 font-bold mt-1">Panel · Sara &amp; Gran Sabio</p>
+        </div>
+      </div>
+      <button onclick="cerrarSesion()" class="w-10 h-10 rounded-xl brut-btn bg-white flex items-center justify-center">
+        <i class="fa-solid fa-right-from-bracket text-sm"></i>
+      </button>
+    </header>
+
+    <nav class="flex items-center gap-2.5 px-4 py-3 border-b-[2.5px] border-ink bg-cream shrink-0 max-w-2xl w-full mx-auto">
+      <button data-tab="chat" onclick="cambiarTab('chat')" class="tab-btn brut-btn px-4 py-2 text-xs flex items-center gap-2">
+        <i class="fa-solid fa-comments"></i> Chat
+      </button>
+      <button data-tab="tareas" onclick="cambiarTab('tareas')" class="tab-btn brut-btn px-4 py-2 text-xs flex items-center gap-2">
+        <i class="fa-solid fa-list-check"></i> Tareas
+      </button>
+    </nav>
+
+    <main class="flex-1 flex flex-col overflow-hidden max-w-2xl w-full mx-auto bg-cream">
+      <!-- TAB: CHAT -->
+      <div id="tab-chat" class="flex-1 flex-col overflow-hidden flex">
+        <div id="lista-mensajes" class="flex-1 overflow-y-auto scroll-thin px-4 py-5 space-y-3"></div>
+        <form id="form-mensaje" class="flex items-end gap-2 p-3 border-t-[2.5px] border-ink shrink-0 bg-cream">
+          <textarea id="input-mensaje" rows="1" placeholder="Escribe algo para Gran Sabio..." class="flex-1 resize-none field max-h-28"></textarea>
+          <button type="submit" class="w-11 h-11 shrink-0 rounded-xl brut-btn bg-yellow flex items-center justify-center">
+            <i class="fa-solid fa-paper-plane text-sm"></i>
+          </button>
+        </form>
+      </div>
+
+      <!-- TAB: TAREAS (lo que Gran Sabio va haciendo) -->
+      <div id="tab-tareas" class="hidden flex-1 flex-col overflow-hidden">
+        <div class="px-4 pt-4 pb-2 shrink-0">
+          <p class="text-[11px] text-black/60 font-semibold">Lo que Gran Sabio va construyendo para Envolvia, en vivo.</p>
+        </div>
+        <div id="lista-tareas" class="flex-1 overflow-y-auto scroll-thin px-4 py-2 pb-6 space-y-4"></div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // ==========================================================
+    // TODO: reemplazar con el proyecto Supabase propio de Envolvia
+    // (creado con la cuenta envolvia.global@gmail.com) en cuanto exista.
+    // Hasta entonces esta pantalla se queda en el login sin conectar.
+    // ==========================================================
+    const SB_URL = 'PENDIENTE_URL_SUPABASE_ENVOLVIA';
+    const SB_KEY = 'PENDIENTE_ANON_KEY_SUPABASE_ENVOLVIA';
+    const CORREO_PERMITIDO = 'mauriciando1999@gmail.com';
+
+    const _sb = SB_URL.startsWith('http') ? supabase.createClient(SB_URL, SB_KEY) : null;
+
+    function mostrarPantalla(id) {
+      ['auth-screen', 'denegado-screen', 'app-content'].forEach((s) => {
+        document.getElementById(s).classList.toggle('hidden', s !== id);
+      });
+    }
+
+    window.cerrarSesion = function () {
+      _sb.auth.signOut().then(() => window.location.reload());
+    };
+
+    document.getElementById('form-login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!_sb) { alert('Todavía no está conectado el Supabase de Envolvia.'); return; }
+      const btn = e.target.querySelector('button[type="submit"]');
+      const original = btn.innerText;
+      btn.innerText = 'INGRESANDO...';
+      const errorBox = document.getElementById('login-error');
+      errorBox.classList.add('hidden');
+
+      const { error } = await _sb.auth.signInWithPassword({
+        email: document.getElementById('login-email').value,
+        password: document.getElementById('login-pass').value,
+      });
+
+      if (error) {
+        errorBox.innerText = error.message;
+        errorBox.classList.remove('hidden');
+        btn.innerText = original;
+      } else {
+        window.location.reload();
+      }
+    });
+
+    (async () => {
+      if (!_sb) return; // Se queda en la pantalla de login hasta conectar Supabase.
+      const { data: { user } } = await _sb.auth.getUser();
+      if (!user) { mostrarPantalla('auth-screen'); return; }
+      if (user.email.toLowerCase() !== CORREO_PERMITIDO.toLowerCase()) { mostrarPantalla('denegado-screen'); return; }
+      mostrarPantalla('app-content');
+      inicializarChat();
+      inicializarTareas();
+      cambiarTab('chat');
+    })();
+
+    window.cambiarTab = function (tab) {
+      ['chat', 'tareas'].forEach((t) => {
+        document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
+        document.getElementById('tab-' + t).classList.toggle('flex', t === tab);
+        document.querySelector(`.tab-btn[data-tab="${t}"]`).classList.toggle('active', t === tab);
+      });
+      if (tab === 'tareas') cargarTareas();
+    };
+
+    // ==========================================================
+    // CHAT — tabla envolvia_mensajes
+    // ==========================================================
+    let _mensajesFirmaRenderizada = '';
+
+    function inicializarChat() {
+      const form = document.getElementById('form-mensaje');
+      const input = document.getElementById('input-mensaje');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const texto = input.value.trim();
+        if (!texto) return;
+        input.value = '';
+        input.disabled = true;
+        const { error } = await _sb.from('envolvia_mensajes').insert([{ role: 'user', text: texto }]);
+        input.disabled = false;
+        input.focus();
+        if (error) { alert('No se pudo enviar: ' + error.message); return; }
+        cargarMensajes(true);
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+      });
+
+      cargarMensajes(true);
+      setInterval(() => cargarMensajes(false), 6000);
+    }
+
+    async function cargarMensajes(scrollAbajo) {
+      const { data, error } = await _sb
+        .from('envolvia_mensajes')
+        .select('*')
+        .order('created_at', { ascending: true })
+        .limit(300);
+      if (error || !data) return;
+
+      const lista = document.getElementById('lista-mensajes');
+      const yaAbajo = lista.scrollTop + lista.clientHeight >= lista.scrollHeight - 40;
+
+      const firma = data.map((m) => m.id).join(',');
+      if (firma === _mensajesFirmaRenderizada) {
+        if (scrollAbajo || yaAbajo) lista.scrollTop = lista.scrollHeight;
+        return;
+      }
+      _mensajesFirmaRenderizada = firma;
+
+      lista.innerHTML = data.map((m, i) => {
+        const esUsuario = m.role === 'user';
+        const anterior = data[i - 1];
+        const mismoRemitente = anterior && anterior.role === m.role;
+        const hora = new Date(m.created_at).toLocaleString('es-VE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+        const avatarSara = esUsuario ? '' : `
+          <div class="w-7 h-7 rounded-lg border-2 border-ink overflow-hidden shrink-0 bg-sky">
+            <img src="assets/avatar-talking1.png" class="w-full h-full object-cover pixelated">
+          </div>`;
+        const globo = mismoRemitente ? '' : (esUsuario ? 'globo-der' : 'globo-izq');
+        return `
+          <div class="flex flex-col ${esUsuario ? 'items-end' : 'items-start'} ${mismoRemitente ? 'mt-1.5' : 'mt-3'}">
+            ${mismoRemitente ? '' : `
+            <span class="text-[9.5px] font-black uppercase tracking-wider px-1 mb-1">
+              ${esUsuario ? 'Tú' : 'Sara · Gran Sabio'}
+            </span>`}
+            <div class="flex items-end gap-2 max-w-[85%] ${esUsuario ? 'flex-row-reverse' : ''}">
+              ${!mismoRemitente ? avatarSara : (esUsuario ? '' : '<div class="w-7 shrink-0"></div>')}
+              <div class="brut-sm ${globo} px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap ${esUsuario ? 'bg-yellow' : 'bg-white'}">
+                ${escaparHtml(m.text)}
+                <div class="flex items-center gap-2 mt-1 opacity-60">
+                  <span class="text-[9px] font-bold">${hora}</span>
+                  <button onclick="copiarMensaje(this, ${JSON.stringify(m.text)})" class="text-[9px] font-black uppercase tracking-wide hover:opacity-100">
+                    <i class="fa-regular fa-copy"></i> copiar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+
+      if (scrollAbajo || yaAbajo) lista.scrollTop = lista.scrollHeight;
+    }
+
+    window.copiarMensaje = function (btn, texto) {
+      navigator.clipboard.writeText(texto).then(() => {
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> copiado';
+        setTimeout(() => { btn.innerHTML = original; }, 1500);
+      }).catch(() => alert('No se pudo copiar automáticamente — selecciona el texto manualmente.'));
+    };
+
+    function escaparHtml(s) {
+      return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // ==========================================================
+    // TAREAS — tabla envolvia_tareas: lo que Gran Sabio va construyendo.
+    // Solo lectura desde acá (Gran Sabio las crea/actualiza desde la PC).
+    // ==========================================================
+    const ESTADO_INFO = {
+      pendiente: { label: 'Pendiente', color: 'bg-white', icon: 'fa-regular fa-circle' },
+      en_progreso: { label: 'En progreso', color: 'bg-yellow', icon: 'fa-solid fa-spinner' },
+      hecho: { label: 'Hecho', color: 'bg-green', icon: 'fa-solid fa-circle-check' },
+    };
+
+    function inicializarTareas() {
+      cargarTareas();
+      setInterval(cargarTareas, 8000);
+    }
+
+    async function cargarTareas() {
+      const cont = document.getElementById('lista-tareas');
+      const { data, error } = await _sb.from('envolvia_tareas').select('*').order('created_at', { ascending: false });
+      if (error) {
+        cont.innerHTML = `<p class="text-[11px] text-black/50 font-semibold mt-2">Todavía no existe la tabla de tareas en Supabase.</p>`;
+        return;
+      }
+      if (!data.length) {
+        cont.innerHTML = `<p class="text-[11px] text-black/50 font-semibold mt-2">Sin tareas registradas todavía.</p>`;
+        return;
+      }
+      cont.innerHTML = data.map((t, i) => {
+        const info = ESTADO_INFO[t.estado] || ESTADO_INFO.pendiente;
+        const hora = new Date(t.created_at).toLocaleString('es-VE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+        const tabColor = ['bg-yellow', 'bg-green', 'bg-pink', 'bg-lav', 'bg-sky'][i % 5];
+        return `
+          <div class="relative mt-3">
+            <div class="folder-tab ${tabColor}"></div>
+            <div class="brut px-4 py-3.5 flex items-start gap-3">
+              <div class="badge ${info.color} shrink-0 w-9 h-9">
+                <i class="${info.icon} text-sm"></i>
+              </div>
+              <div class="flex-1">
+                <p class="text-[13px] font-bold text-ink">${escaparHtml(t.texto)}</p>
+                <p class="font-pixel text-[7.5px] leading-relaxed tracking-wide mt-2 text-black/60">${info.label.toUpperCase()} · ${hora}</p>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+  </script>
+</body>
+</html>
